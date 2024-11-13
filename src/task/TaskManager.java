@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import utils.Settings;
 
@@ -14,10 +15,20 @@ import utils.Settings;
  */
 public class TaskManager implements Serializable {
 
-    enum QueryMode {
+    public enum QueryMode {
         ALL,
         COMPLETE,
-        INCOMPLETE
+        INCOMPLETE,
+    }
+
+    public enum SortMode {
+        CREATION,
+        CREATION_R,
+        DUE,
+        DUE_R,
+        HEAT,
+        COMPLETE,
+        COMPLETE_R,
     }
 
     @Serial
@@ -39,6 +50,12 @@ public class TaskManager implements Serializable {
         }
     }
 
+    /**
+     * Get the only instance of class TaskManager. Please only use this method whenever you want to access TaskManager.
+     * Do Not use variables to store the return object.
+     *
+     * @return the only instance.
+     */
     public static TaskManager getInstance() {
         if (instance == null) {
             instance = new TaskManager();
@@ -107,65 +124,69 @@ public class TaskManager implements Serializable {
     }
 
     /**
-     * Retrieves a list of tasks sorted by their creation time in ascending order.
+     * Retrieves a list of tasks sorted by sort mode and filtered by query mode
+     *
+     * @param queryMode query mode, default ALL
+     * @param sortMode sort mode, default CREATION
      *
      * @return a list of tasks sorted by creation time
      */
-    public List<Task> getTasksByCreationDate() {
-        List<Task> sortedTasks = new ArrayList<>(tasks);
-        sortedTasks.sort(Comparator.comparing(Task::getStartTime));
-        return sortedTasks;
+    public List<Task> getTasks(QueryMode queryMode, SortMode sortMode) {
+        List<Task> tasks = getTasksByQueryMode(queryMode);
+        if (!tasks.isEmpty()) {
+            switch (sortMode) {
+                case CREATION:
+                    tasks.sort(Comparator.comparing(Task::getStartTime));
+                    break;
+                case CREATION_R:
+                    tasks.sort(Comparator.comparing(Task::getStartTime).reversed());
+                    break;
+                case DUE:
+                    tasks.sort(Comparator.comparing(Task::getExpectedEndTime));
+                    break;
+                case DUE_R:
+                    tasks.sort(Comparator.comparing(Task::getExpectedEndTime).reversed());
+                    break;
+                case HEAT:
+                    tasks.sort(Comparator.comparing(Task::getHeatIndex).reversed());
+                    break;
+                case COMPLETE:
+                    tasks = getTasksByQueryMode(QueryMode.COMPLETE);
+                    tasks.sort(Comparator.comparing(Task::getActualEndTime));
+                    break;
+                case COMPLETE_R:
+                    tasks = getTasksByQueryMode(QueryMode.COMPLETE);
+                    tasks.sort(Comparator.comparing(Task::getActualEndTime).reversed());
+                    break;
+            }
+        }
+        return tasks;
     }
 
     /**
-     * Retrieves a list of tasks sorted by their expected end time in ascending order.
+     * Retrieves a list of tasks sorted by default sort mode and filtered by default query mode
      *
-     * @return a list of tasks sorted by due date
-     */
-    public List<Task> getTasksByDueDate() {
-        List<Task> sortedTasks = new ArrayList<>(tasks);
-        sortedTasks.sort(Comparator.comparing(Task::getExpectedEndTime));
-        return sortedTasks;
-    }
-
-    /**
-     * Retrieves a list of tasks sorted by their heat index in descending order.
      *
-     * @return a list of tasks sorted by heat index
+     * @return a list of tasks sorted by creation time
      */
-    public List<Task> getTasksByHeatIndex() {
-        List<Task> sortedTasks = new ArrayList<>(tasks);
-        sortedTasks.sort(Comparator.comparing(Task::getHeatIndex).reversed());
-        return sortedTasks;
+    public List<Task> getTasks() {
+        return getTasks(QueryMode.ALL, SortMode.CREATION);
     }
 
-    /**
-     * Retrieves all uncompleted tasks.
-     *
-     * @return a list of uncompleted tasks
-     */
-    public List<Task> getUncompletedTasks() {
-        return new ArrayList<>(tasks).stream()
-                .filter(task -> !task.isCompleted()).toList();
-    }
 
     /**
-     * Retrieves all completed tasks.
-     *
-     * @return a list of completed tasks
-     */
-    public List<Task> getCompletedTasks() {
-        return new ArrayList<>(tasks).stream()
-                .filter(Task::isCompleted).toList();
-    }
-
-    /**
-     * Retrieves all tasks.
+     * Retrieves tasks with selected query mode
      *
      * @return a list of completed tasks
      */
-    public List<Task> getAllTasks() {
-        return new ArrayList<>(tasks);
+    private List<Task> getTasksByQueryMode(QueryMode mode) {
+        return switch (mode) {
+            case ALL -> new ArrayList<>(tasks);
+            case COMPLETE -> new ArrayList<>(tasks).stream()
+                    .filter(Task::isCompleted).collect(Collectors.toList());
+            case INCOMPLETE -> new ArrayList<>(tasks).stream()
+                    .filter(task -> !task.isCompleted()).collect(Collectors.toList());
+        };
     }
 
     /**

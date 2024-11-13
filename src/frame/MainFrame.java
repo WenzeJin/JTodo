@@ -15,6 +15,12 @@ public class MainFrame extends JFrame {
 
     private JPanel taskListPanel;
 
+    //private JLabel modeLabel;
+
+    private TaskManager.QueryMode queryMode = TaskManager.QueryMode.ALL;
+
+    private TaskManager.SortMode sortMode = TaskManager.SortMode.CREATION;
+
     /**
      * Constructs the main frame with options to view, sort, and manage tasks.
      */
@@ -23,6 +29,12 @@ public class MainFrame extends JFrame {
     }
 
     private void initializeUI() {
+        // Check if system OS is macOS
+        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+            // Use system menu bar on macOS
+            System.setProperty("apple.laf.useScreenMenuBar", "true");
+        }
+
         setTitle("待办事项");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 600);
@@ -53,8 +65,8 @@ public class MainFrame extends JFrame {
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Populate task list
-        populateTaskList(TaskManager.getInstance().getUncompletedTasks());
+        // Refresh tasks
+        refreshTasks();
 
         // Menu bar with sorting options and settings
         JMenuBar menuBar = new JMenuBar();
@@ -80,23 +92,81 @@ public class MainFrame extends JFrame {
         settingsMenuItem.addActionListener(e -> openSettingsFrame());
         optionsMenu.add(settingsMenuItem);
 
+        // Sort Menu
+
         JMenu sortMenu = new JMenu("排序方式");
         menuBar.add(sortMenu);
 
-        JMenuItem sortByCreation = new JMenuItem("按创建时间");
+        JMenuItem sortByCreation = new JMenuItem("按创建时间(升序)");
         sortByCreation.addActionListener(
-                e -> populateTaskList(TaskManager.getInstance().getTasksByCreationDate()));
+                e -> setSortMode(TaskManager.SortMode.CREATION));
         sortMenu.add(sortByCreation);
 
-        JMenuItem sortByDueDate = new JMenuItem("按截止时间");
+        JMenuItem sortByCreationR = new JMenuItem("按创建时间(降序)");
+        sortByCreationR.addActionListener(
+                e -> setSortMode(TaskManager.SortMode.CREATION_R));
+        sortMenu.add(sortByCreationR);
+
+        JMenuItem sortByDueDate = new JMenuItem("按截止时间(升序)");
         sortByDueDate.addActionListener(
-                e -> populateTaskList(TaskManager.getInstance().getTasksByDueDate()));
+                e -> setSortMode(TaskManager.SortMode.DUE));
         sortMenu.add(sortByDueDate);
+
+        JMenuItem sortByDueDateR = new JMenuItem("按截止时间(降序)");
+        sortByDueDateR.addActionListener(
+                e -> setSortMode(TaskManager.SortMode.DUE_R));
+        sortMenu.add(sortByDueDateR);
+
+        JMenuItem sortByCompleteDate = new JMenuItem("按完成时间(升序,仅限已完成)");
+        sortByCompleteDate.addActionListener(
+                e -> setSortMode(TaskManager.SortMode.COMPLETE));
+        sortMenu.add(sortByCompleteDate);
+
+        JMenuItem sortByCompleteDateR = new JMenuItem("按完成时间(升序,仅限已完成)");
+        sortByCompleteDateR.addActionListener(
+                e -> setSortMode(TaskManager.SortMode.COMPLETE_R));
+        sortMenu.add(sortByCompleteDate);
 
         JMenuItem sortByHeat = new JMenuItem("按任务热度");
         sortByHeat.addActionListener(
-                e -> populateTaskList(TaskManager.getInstance().getTasksByHeatIndex()));
+                e -> setSortMode(TaskManager.SortMode.HEAT));
         sortMenu.add(sortByHeat);
+
+        // Filter Menu
+
+        JMenu filterMenu = new JMenu("过滤方式");
+        menuBar.add(filterMenu);
+
+        JMenuItem queryAll = new JMenuItem("全部");
+        queryAll.addActionListener(
+                e -> setQueryMode(TaskManager.QueryMode.ALL));
+        filterMenu.add(queryAll);
+
+        JMenuItem queryComplete = new JMenuItem("已完成");
+        queryComplete.addActionListener(
+                e -> setQueryMode(TaskManager.QueryMode.COMPLETE));
+        filterMenu.add(queryComplete);
+
+        JMenuItem queryIncomplete = new JMenuItem("未完成");
+        queryIncomplete.addActionListener(
+                e -> setQueryMode(TaskManager.QueryMode.INCOMPLETE));
+        filterMenu.add(queryIncomplete);
+
+    }
+
+    private void setSortMode(TaskManager.SortMode sortMode) {
+        this.sortMode = sortMode;
+        refreshTasks();
+    }
+
+    private void setQueryMode(TaskManager.QueryMode queryMode) {
+        this.queryMode = queryMode;
+        refreshTasks();
+    }
+
+    public void refreshTasks() {
+        List<Task> tasks = TaskManager.getInstance().getTasks(queryMode, sortMode);
+        populateTaskList(tasks);
     }
 
     /**
@@ -146,10 +216,5 @@ public class MainFrame extends JFrame {
         NewTaskFrame newTaskFrame = new NewTaskFrame(this);
         newTaskFrame.setVisible(true);
         setVisible(false);
-    }
-
-    /** Refreshes the task list displayed in the task list panel. */
-    public void refreshTaskList() {
-        populateTaskList(TaskManager.getInstance().getUncompletedTasks());
     }
 }

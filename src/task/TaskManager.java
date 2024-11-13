@@ -2,11 +2,11 @@ package task;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+
+import utils.Settings;
 
 /**
  * Manages a collection of Task objects, providing operations to add, remove, and complete tasks.
@@ -14,16 +14,50 @@ import java.util.Optional;
  */
 public class TaskManager implements Serializable {
 
+    enum QueryMode {
+        ALL,
+        COMPLETE,
+        INCOMPLETE
+    }
+
     @Serial
     private static final long serialVersionUID = 1L;
+
+    private static TaskManager instance;
 
     private List<Task> tasks;
 
     /**
      * Constructs a new TaskManager with an empty list of tasks.
      */
-    public TaskManager() {
+    private TaskManager() {
         this.tasks = new ArrayList<>();
+        try {
+            loadTasksFromFile(Settings.getInstance().getTaskSavePath());
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static TaskManager getInstance() {
+        if (instance == null) {
+            instance = new TaskManager();
+        }
+        return instance;
+    }
+
+    /**
+     * If auto-saving is enabled by settings, save all tasks.
+     *
+     */
+    public void triggerAutoSave() {
+        if (Settings.getInstance().getAutoSaveSetting()) {
+            try {
+                saveTasksToFile(Settings.getInstance().getTaskSavePath());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -37,6 +71,7 @@ public class TaskManager implements Serializable {
             throw new IllegalArgumentException("Task cannot be null.");
         }
         tasks.add(task);
+        triggerAutoSave();
     }
 
     /**
@@ -46,6 +81,7 @@ public class TaskManager implements Serializable {
      */
     public void removeTask(Task task) {
         tasks.remove(task);
+        triggerAutoSave();
     }
 
     /**
@@ -55,6 +91,7 @@ public class TaskManager implements Serializable {
      */
     public void completeTask(Task task) {
         task.completeTask();
+        triggerAutoSave();
     }
 
     /**
@@ -103,13 +140,34 @@ public class TaskManager implements Serializable {
     }
 
     /**
+     * Retrieves all uncompleted tasks.
+     *
+     * @return a list of uncompleted tasks
+     */
+    public List<Task> getUncompletedTasks() {
+        return new ArrayList<>(tasks).stream()
+                .filter(task -> !task.isCompleted()).toList();
+    }
+
+    /**
+     * Retrieves all completed tasks.
+     *
+     * @return a list of completed tasks
+     */
+    public List<Task> getCompletedTasks() {
+        return new ArrayList<>(tasks).stream()
+                .filter(Task::isCompleted).toList();
+    }
+
+    /**
      * Retrieves all tasks.
      *
-     * @return a list of all tasks
+     * @return a list of completed tasks
      */
     public List<Task> getAllTasks() {
         return new ArrayList<>(tasks);
     }
+
     /**
      * Saves the current list of tasks to a specified file for persistent storage.
      *
@@ -133,6 +191,8 @@ public class TaskManager implements Serializable {
     public void loadTasksFromFile(String fileName) throws IOException, ClassNotFoundException {
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName))) {
             tasks = (List<Task>) ois.readObject();
+        } catch (FileNotFoundException e) {
+            System.out.println("File not found.");
         }
     }
 

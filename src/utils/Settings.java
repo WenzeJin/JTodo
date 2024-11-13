@@ -18,7 +18,10 @@ public class Settings {
     private static Settings instance;
 
     // Default task save path
-    private String taskSavePath = ".";
+    private String taskSavePath = "./tasks-saving.data";
+
+    // Auto-saving
+    private boolean autoSave = true;
 
     // Private constructor to enforce singleton pattern
     private Settings() {
@@ -50,7 +53,8 @@ public class Settings {
                     content.append(line);
                 }
                 JSONObject json = new JSONObject(content.toString());
-                this.taskSavePath = json.optString("taskSavePath", ".");
+                this.taskSavePath = json.optString("taskSavePath", "./tasks-saving.data");
+                this.autoSave = json.optBoolean("autoSave", true);
             } catch (IOException e) {
                 System.err.println("Error loading settings file; using default settings.");
                 e.printStackTrace();
@@ -66,6 +70,7 @@ public class Settings {
     public void saveSettings() {
         JSONObject json = new JSONObject();
         json.put("taskSavePath", this.taskSavePath);
+        json.put("autoSave", this.autoSave);
 
         try (FileWriter writer = new FileWriter(SETTINGS_FILE, StandardCharsets.UTF_8)) {
             writer.write(json.toString(4));  // Write formatted JSON output
@@ -85,6 +90,15 @@ public class Settings {
     }
 
     /**
+     * Gets the setting of auto-saving
+     *
+     * @return boolean value of setting
+     */
+    public boolean getAutoSaveSetting() {
+        return autoSave;
+    }
+
+    /**
      * Sets the task save path and saves settings.
      *
      * @param path the new task save path
@@ -93,4 +107,6 @@ public class Settings {
         this.taskSavePath = path;
         saveSettings();
     }
+
+
 }

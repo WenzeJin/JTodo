@@ -21,7 +21,7 @@ public class Subtask implements Serializable {
     private final String title;
     private String description;
     private boolean isCompleted;
-    private final Task parentTask;
+    private Task parentTask;
     private final Date startTime;
     private Date actualEndTime;
 
@@ -37,9 +37,6 @@ public class Subtask implements Serializable {
     public Subtask(String title, Task parentTask) {
         if (title == null || title.isEmpty()) {
             throw new IllegalArgumentException("Subtask title cannot be null or empty.");
-        }
-        if (parentTask == null) {
-            throw new IllegalArgumentException("Parent task cannot be null.");
         }
         this.id = idGenerator.incrementAndGet(); // Generates a unique ID
         this.title = title;
@@ -59,6 +56,7 @@ public class Subtask implements Serializable {
         this.isCompleted = true;
         this.actualEndTime = new Date(); // Sets end time to current time
     }
+
 
     // Getters for each field
 
@@ -88,6 +86,12 @@ public class Subtask implements Serializable {
 
     public Date getActualEndTime() {
         return actualEndTime;
+    }
+
+    //Setters
+
+    public void setParentTask(Task parentTask) {
+        this.parentTask = parentTask;
     }
 
     // Override equals, hashCode, and toString methods

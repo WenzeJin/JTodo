@@ -209,7 +209,8 @@ public class MainFrame extends JFrame {
     }
 
     private void openTaskDetailsFrame(Task task) {
-        JOptionPane.showMessageDialog(this, "跳转至任务详情界面: " + task.getTitle());
+        TaskDetailFrame taskDetailFrame = new TaskDetailFrame(this, task);
+        taskDetailFrame.setVisible(true);
     }
 
     private void openNewTaskFrame() {

@@ -173,8 +173,8 @@ public class NewTaskFrame extends JFrame {
     }
 
     private void returnToMainFrame() {
-        dispose();
         mainFrame.setVisible(true);
         ((MainFrame) mainFrame).refreshTasks();
+        dispose();
     }
 }

@@ -65,9 +65,9 @@ public class Task implements Serializable {
     }
 
     /**
-     * Calculates and updates the heat index based on the frequency of modifications.
+     * Updates the heat index based on the frequency of modifications.
      */
-    public void calculateHeat() {
+    public void increaseHeat() {
         // Logic to calculate and update the heat index (e.g., based on view and update frequency)
         heatIndex++;
     }

@@ -112,6 +112,27 @@ public class TaskManager implements Serializable {
     }
 
     /**
+     * Marks a specified task as completed.
+     *
+     * @param task The task to complete.
+     */
+    public void updateHeat(Task task) {
+        task.increaseHeat();
+        triggerAutoSave();
+    }
+
+
+    /**
+     * Marks a specified subtask as completed.
+     *
+     * @param subtask The subtask to complete.
+     */
+    public void completeSubTask(Subtask subtask) {
+        subtask.completeSubtask();
+        triggerAutoSave();
+    }
+
+    /**
      * Retrieves a task by its ID.
      *
      * @param id The unique ID of the task.
@@ -195,7 +216,7 @@ public class TaskManager implements Serializable {
      * @param fileName The name of the file to save tasks to.
      * @throws IOException if an I/O error occurs.
      */
-    public void saveTasksToFile(String fileName) throws IOException {
+    public synchronized void saveTasksToFile(String fileName) throws IOException {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName))) {
             oos.writeObject(tasks);
         }

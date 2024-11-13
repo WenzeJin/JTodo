@@ -209,6 +209,7 @@ public class MainFrame extends JFrame {
     }
 
     private void openTaskDetailsFrame(Task task) {
+        TaskManager.getInstance().updateHeat(task);
         TaskDetailFrame taskDetailFrame = new TaskDetailFrame(this, task);
         taskDetailFrame.setVisible(true);
     }

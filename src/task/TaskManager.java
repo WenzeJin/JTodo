@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import utils.Settings;
 
@@ -35,6 +37,9 @@ public class TaskManager implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private static TaskManager instance;
+
+    // Executor for async autosave
+    private final ExecutorService autoSaveExecutor = Executors.newSingleThreadExecutor();
 
     private List<Task> tasks;
 
@@ -69,11 +74,13 @@ public class TaskManager implements Serializable {
      */
     public void triggerAutoSave() {
         if (Settings.getInstance().getAutoSaveSetting()) {
-            try {
-                saveTasksToFile(Settings.getInstance().getTaskSavePath());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            autoSaveExecutor.submit(() -> {
+                try {
+                    saveTasksToFile(Settings.getInstance().getTaskSavePath());
+                } catch (IOException e) {
+                    System.err.println("Failed to save tasks: " + e.getMessage());
+                }
+            });
         }
     }
 

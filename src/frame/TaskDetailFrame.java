@@ -80,7 +80,7 @@ public class TaskDetailFrame extends JFrame {
 
         // Close button
         JButton closeButton = new JButton("关闭");
-        closeButton.addActionListener(e -> dispose());
+        closeButton.addActionListener(e -> returnToMainFrame());
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(closeButton);
 

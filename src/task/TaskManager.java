@@ -15,7 +15,7 @@ import utils.Settings;
  * Manages a collection of Task objects, providing operations to add, remove, and complete tasks.
  * Includes methods for saving to and loading from a file for persistent storage.
  */
-public class TaskManager implements Serializable {
+public class TaskManager {
 
     public enum QueryMode {
         ALL,
@@ -32,9 +32,6 @@ public class TaskManager implements Serializable {
         COMPLETE,
         COMPLETE_R,
     }
-
-    @Serial
-    private static final long serialVersionUID = 1L;
 
     private static TaskManager instance;
 

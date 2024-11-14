@@ -2,12 +2,11 @@ package frame;
 
 import task.Subtask;
 import task.Task;
+import task.TaskManager;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.util.List;
 
 public class TaskDetailFrame extends JFrame {
@@ -64,6 +63,7 @@ public class TaskDetailFrame extends JFrame {
         JCheckBox completeCheckBox = new JCheckBox("标记为已完成");
         completeCheckBox.setSelected(task.isCompleted());
         infoPanel.add(completeCheckBox);
+        completeCheckBox.addItemListener(this::completeCheckBoxChanged);
 
         add(infoPanel, BorderLayout.NORTH);
 
@@ -99,6 +99,7 @@ public class TaskDetailFrame extends JFrame {
 
             JCheckBox subtaskCheckBox = new JCheckBox(subtask.getTitle());
             subtaskCheckBox.setSelected(subtask.isCompleted());
+            subtaskCheckBox.addItemListener(e -> subtaskCheckBoxChanged(e, subtask));
 
             JLabel subtaskDescLabel = new JLabel("<html><i>" + (subtask.getDescription() != null ? subtask.getDescription() : "无描述") + "</i></html>");
             subtaskDescLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
@@ -110,6 +111,22 @@ public class TaskDetailFrame extends JFrame {
 
         subtaskPanel.revalidate();
         subtaskPanel.repaint();
+    }
+
+    private void completeCheckBoxChanged(ItemEvent e) {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+            TaskManager.getInstance().setTaskCompleted(task, true);
+        } else if (e.getStateChange() == ItemEvent.DESELECTED) {
+            TaskManager.getInstance().setTaskCompleted(task, false);
+        }
+    }
+
+    private void subtaskCheckBoxChanged(ItemEvent e, Subtask subtask) {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+            TaskManager.getInstance().setSubtaskCompleted(subtask, true);
+        } else if (e.getStateChange() == ItemEvent.DESELECTED) {
+            TaskManager.getInstance().setSubtaskCompleted(subtask, false);
+        }
     }
 
     private void returnToMainFrame() {

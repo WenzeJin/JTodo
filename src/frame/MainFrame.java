@@ -6,6 +6,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
+import java.util.Date;
 
 /**
  * MainFrame displays and manages the task list UI. It includes sorting options
@@ -191,6 +192,12 @@ public class MainFrame extends JFrame {
             );
             JLabel taskLabel = new JLabel(taskInfo);
             taskPanel.add(taskLabel, BorderLayout.CENTER);
+            Date currentDate = new Date();
+            if(task.isCompleted()) {
+                taskLabel.setForeground(Color.GREEN);
+            } else if(currentDate.after(task.getExpectedEndTime())) {
+                taskLabel.setForeground(Color.RED);
+            }
 
             // Details button
             JButton detailsButton = new JButton("查看详情");
@@ -209,14 +216,15 @@ public class MainFrame extends JFrame {
     }
 
     private void openTaskDetailsFrame(Task task) {
-        TaskManager.getInstance().updateHeat(task);
+        if(!task.isCompleted())
+            TaskManager.getInstance().updateHeat(task);
         TaskDetailFrame taskDetailFrame = new TaskDetailFrame(this, task);
         taskDetailFrame.setVisible(true);
     }
 
     private void openNewTaskFrame() {
-        NewTaskFrame newTaskFrame = new NewTaskFrame(this);
-        newTaskFrame.setVisible(true);
+        TaskEditFrame taskEditFrame = new TaskEditFrame(this);
+        taskEditFrame.setVisible(true);
         setVisible(false);
     }
 }

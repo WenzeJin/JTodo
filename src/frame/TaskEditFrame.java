@@ -4,6 +4,7 @@ import task.Subtask;
 import task.Task;
 import task.TaskManager;
 
+import javax.lang.model.type.NullType;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -12,12 +13,13 @@ import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Frame for creating a new task, allowing addition and management of subtasks.
  * Closes main frame upon opening, then reopens and refreshes it after task creation.
  */
-public class NewTaskFrame extends JFrame {
+public class TaskEditFrame extends JFrame {
 
     private JTextField titleField;
     private JTextArea descriptionArea;
@@ -26,10 +28,28 @@ public class NewTaskFrame extends JFrame {
     private List<Subtask> subtasks;
     private JPanel subtaskPanel;
 
-    public NewTaskFrame(JFrame mainFrame) {
+    // task == null means creation mode, else edit mode
+    private final Task task;
+
+    public TaskEditFrame(JFrame mainFrame) {
         this.mainFrame = mainFrame;
+        this.task = null;
         this.subtasks = new ArrayList<>();
         setTitle("新建待办事项");
+
+        initializeUI();
+    }
+
+    public TaskEditFrame(JFrame mainFrame, Task task) {
+        this.mainFrame = mainFrame;
+        this.task = task;
+        this.subtasks = task.getSubtasks();
+        setTitle("编辑待办事项");
+
+        initializeUI();
+    }
+
+    private void initializeUI(){
         setSize(400, 400);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -53,6 +73,10 @@ public class NewTaskFrame extends JFrame {
         titleField = new JTextField();
         titlePanel.add(titleField, BorderLayout.CENTER);
         formPanel.add(titlePanel, BorderLayout.NORTH);
+        if (task != null) {
+            titleField.setText(task.getTitle());
+            titleField.setEditable(false);
+        }
 
         // Description area
         JPanel descriptionPanel = new JPanel(new BorderLayout());
@@ -60,6 +84,9 @@ public class NewTaskFrame extends JFrame {
         descriptionArea = new JTextArea(3, 20);
         descriptionPanel.add(new JScrollPane(descriptionArea), BorderLayout.CENTER);
         formPanel.add(descriptionPanel, BorderLayout.CENTER);
+        if (task != null) {
+            descriptionArea.setText(task.getDescription());
+        }
 
         // Due date
         JPanel dueDatePanel = new JPanel(new BorderLayout());
@@ -69,6 +96,9 @@ public class NewTaskFrame extends JFrame {
         dueDateSpinner.setEditor(dateEditor);
         dueDatePanel.add(dueDateSpinner, BorderLayout.CENTER);
         formPanel.add(dueDatePanel, BorderLayout.SOUTH);
+        if (task != null) {
+            dueDateSpinner.setValue(task.getExpectedEndTime());
+        }
 
         add(formPanel, BorderLayout.NORTH);
 
@@ -170,6 +200,14 @@ public class NewTaskFrame extends JFrame {
         JOptionPane.showMessageDialog(this, "任务创建成功！", "成功", JOptionPane.INFORMATION_MESSAGE);
 
         returnToMainFrame();
+    }
+
+    private void editTask() {
+        if (task == null) {
+            return;
+        }
+        task.setDescription(descriptionArea.getText().trim());
+        //TODO: complete edit task
     }
 
     private void returnToMainFrame() {

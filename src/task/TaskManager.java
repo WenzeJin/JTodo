@@ -113,8 +113,8 @@ public class TaskManager implements Serializable {
      *
      * @param task The task to complete.
      */
-    public void completeTask(Task task) {
-        task.completeTask();
+    public void setTaskCompleted(Task task, boolean completed) {
+        task.setCompleted(completed);
         triggerAutoSave();
     }
 
@@ -134,8 +134,8 @@ public class TaskManager implements Serializable {
      *
      * @param subtask The subtask to complete.
      */
-    public void completeSubTask(Subtask subtask) {
-        subtask.completeSubtask();
+    public void setSubtaskCompleted(Subtask subtask, boolean completed) {
+        subtask.setCompleted(completed);
         triggerAutoSave();
     }
 

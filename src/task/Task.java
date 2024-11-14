@@ -84,14 +84,10 @@ public class Task implements Serializable {
     /**
      * Marks the task as completed if all subtasks are completed and sets the actual end time.
      */
-    public void completeTask() {
-        for (Subtask subtask : subtasks) {
-            if (!subtask.isCompleted()) {
-                return; // Task cannot be completed until all subtasks are complete
-            }
-        }
-        this.isCompleted = true;
-        this.actualEndTime = new Date(); // Sets actual end time to the current time
+    public void setCompleted(boolean completed) {
+        this.isCompleted = completed;
+        if(completed)
+            this.actualEndTime = new Date(); // Sets actual end time to the current time
     }
 
     // Getters for each field

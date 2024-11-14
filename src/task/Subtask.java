@@ -52,9 +52,10 @@ public class Subtask implements Serializable {
     /**
      * Marks the subtask as completed and records the actual end time.
      */
-    public void completeSubtask() {
-        this.isCompleted = true;
-        this.actualEndTime = new Date(); // Sets end time to current time
+    public void setCompleted(boolean isCompleted) {
+        this.isCompleted = isCompleted;
+        if(isCompleted)
+            this.actualEndTime = new Date(); // Sets end time to current time
     }
 
 

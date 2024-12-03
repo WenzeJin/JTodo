@@ -1,0 +1,6 @@
+projectKey=JTodo
+serverUrl=http://localhost:9000
+serverVersion=10.7.0.96327
+dashboardUrl=http://localhost:9000/dashboard?id=JTodo
+ceTaskId=3779d64e-6b82-41b1-8c69-381333f8e8db
+ceTaskUrl=http://localhost:9000/api/ce/task?id=3779d64e-6b82-41b1-8c69-381333f8e8db

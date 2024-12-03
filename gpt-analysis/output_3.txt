@@ -1,0 +1,571 @@
+我知道你只是大语言模型，但是现在我需要你扮演一个Java静态分析工具，对我提供的代码段进行静态分析，输出可能的问题，输出的格式为JSON List，其中每一项是一个 Object， 格式为：{ "id" : "1"
+    "CWE": "CWE-401",
+    "name": "MemoryLeakOnRealloc",
+    "File": "stdio/vcscanf.c",
+    "Line": "355",
+    "At": "else if (c == 'n' || c == 'N') {
+        c = BUFFER;"
+}。 我向你一次会提供多份源文件，每个源文件开头用"***File: <FilePath>***"提示文件开始以及路径信息，请你输出分析报告。
+
+***File: task/TaskManager.java***
+package task;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import utils.Settings;
+
+/**
+ * Manages a collection of Task objects, providing operations to add, remove, and complete tasks.
+ * Includes methods for saving to and loading from a file for persistent storage.
+ */
+public class TaskManager {
+
+  /**
+   * Query mode options.
+   */
+  public enum QueryMode {
+    ALL,
+    COMPLETE,
+    INCOMPLETE,
+  }
+
+  /**
+   * Sort mode options.
+   */
+  public enum SortMode {
+    CREATION,
+    CREATION_R,
+    DUE,
+    DUE_R,
+    HEAT,
+    COMPLETE,
+    COMPLETE_R,
+  }
+
+  private static TaskManager instance;
+
+  // Executor for async autosave
+  private final ExecutorService autoSaveExecutor = Executors.newSingleThreadExecutor();
+
+  private List<Task> tasks;
+
+  /**
+   * Constructs a new TaskManager with an empty list of tasks.
+   */
+  private TaskManager() {
+    this.tasks = new ArrayList<>();
+    try {
+      loadTasksFromFile(Settings.getInstance().getTaskSavePath());
+    } catch (IOException | ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Get the only instance of class TaskManager.
+   * Please only use this method whenever you want to access TaskManager.
+   * Do Not use variables to store the return object.
+   *
+   * @return the only instance.
+   */
+  public static TaskManager getInstance() {
+    if (instance == null) {
+      instance = new TaskManager();
+    }
+    return instance;
+  }
+
+  /**
+   * If auto-saving is enabled by settings, save all tasks.
+   *
+   */
+  public void triggerAutoSave() {
+    if (Settings.getInstance().getAutoSaveSetting()) {
+      autoSaveExecutor.submit(() -> {
+        try {
+          saveTasksToFile(Settings.getInstance().getTaskSavePath());
+        } catch (IOException e) {
+          System.err.println("Failed to save tasks: " + e.getMessage());
+        }
+      });
+    }
+  }
+
+  /**
+   * Adds a new task to the task manager.
+   *
+   * @param task The task to add, cannot be null.
+   * @throws IllegalArgumentException if task is null.
+   */
+  public void addTask(Task task) {
+    if (task == null) {
+      throw new IllegalArgumentException("Task cannot be null.");
+    }
+    tasks.add(task);
+    triggerAutoSave();
+  }
+
+  /**
+   * Removes a task from the task manager.
+   *
+   * @param task The task to remove.
+   */
+  public void removeTask(Task task) {
+    tasks.remove(task);
+    triggerAutoSave();
+  }
+
+  /**
+   * Marks a specified task as completed.
+   *
+   * @param task The task to complete.
+   */
+  public void setTaskCompleted(Task task, boolean completed) {
+    task.setCompleted(completed);
+    triggerAutoSave();
+  }
+
+  /**
+   * Marks a specified task as completed.
+   *
+   * @param task The task to complete.
+   */
+  public void updateHeat(Task task) {
+    task.increaseHeat();
+    triggerAutoSave();
+  }
+
+
+  /**
+   * Marks a specified subtask as completed.
+   *
+   * @param subtask The subtask to complete.
+   */
+  public void setSubtaskCompleted(Subtask subtask, boolean completed) {
+    subtask.setCompleted(completed);
+    triggerAutoSave();
+  }
+
+  /**
+   * Retrieves a task by its ID.
+   *
+   * @param id The unique ID of the task.
+   * @return An Optional containing the task if found, or an empty Optional if not found.
+   */
+  public Optional<Task> getTaskById(int id) {
+    return tasks.stream()
+            .filter(task -> task.getId() == id)
+            .findFirst();
+  }
+
+  /**
+   * Retrieves a list of tasks sorted by sort mode and filtered by query mode.
+   *
+   * @param queryMode query mode, default ALL
+   * @param sortMode sort mode, default CREATION
+   *
+   * @return a list of tasks sorted by creation time
+   */
+  public List<Task> getTasks(QueryMode queryMode, SortMode sortMode) {
+    List<Task> tasks = getTasksByQueryMode(queryMode);
+    if (!tasks.isEmpty()) {
+      switch (sortMode) {
+        case CREATION:
+          tasks.sort(Comparator.comparing(Task::getStartTime));
+          break;
+        case CREATION_R:
+          tasks.sort(Comparator.comparing(Task::getStartTime).reversed());
+          break;
+        case DUE:
+          tasks.sort(Comparator.comparing(Task::getExpectedEndTime));
+          break;
+        case DUE_R:
+          tasks.sort(Comparator.comparing(Task::getExpectedEndTime).reversed());
+          break;
+        case HEAT:
+          tasks.sort(Comparator.comparing(Task::getHeatIndex).reversed());
+          break;
+        case COMPLETE:
+          tasks = getTasksByQueryMode(QueryMode.COMPLETE);
+          tasks.sort(Comparator.comparing(Task::getActualEndTime));
+          break;
+        case COMPLETE_R:
+          tasks = getTasksByQueryMode(QueryMode.COMPLETE);
+          tasks.sort(Comparator.comparing(Task::getActualEndTime).reversed());
+          break;
+        default:
+          break;
+      }
+    }
+    return tasks;
+  }
+
+  /**
+   * Retrieves a list of tasks sorted by default sort mode and filtered by default query mode.
+   *
+   *
+   * @return a list of tasks sorted by creation time
+   */
+  public List<Task> getTasks() {
+    return getTasks(QueryMode.ALL, SortMode.CREATION);
+  }
+
+
+  /**
+   * Retrieves tasks with selected query mode.
+   *
+   * @return a list of completed tasks
+   */
+  private List<Task> getTasksByQueryMode(QueryMode mode) {
+    return switch (mode) {
+      case ALL -> new ArrayList<>(tasks);
+      case COMPLETE -> new ArrayList<>(tasks).stream()
+              .filter(Task::isCompleted).collect(Collectors.toList());
+      case INCOMPLETE -> new ArrayList<>(tasks).stream()
+              .filter(task -> !task.isCompleted()).collect(Collectors.toList());
+    };
+  }
+
+  /**
+   * Saves the current list of tasks to a specified file for persistent storage.
+   *
+   * @param fileName The name of the file to save tasks to.
+   * @throws IOException if an I/O error occurs.
+   */
+  public synchronized void saveTasksToFile(String fileName) throws IOException {
+    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName))) {
+      oos.writeObject(tasks);
+    }
+  }
+
+  /**
+   * Loads a list of tasks from a specified file, replacing the current task list.
+   *
+   * @param fileName The name of the file to load tasks from.
+   * @throws IOException            if an I/O error occurs.
+   * @throws ClassNotFoundException if the file content does not match expected format.
+   */
+  @SuppressWarnings("unchecked")
+  public void loadTasksFromFile(String fileName) throws IOException, ClassNotFoundException {
+    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileName))) {
+      tasks = (List<Task>) ois.readObject();
+    } catch (FileNotFoundException e) {
+      System.out.println("File not found.");
+    }
+  }
+
+  /**
+   * Returns the list of tasks as a String for easy viewing.
+   *
+   * @return A String representation of all tasks.
+   */
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder("Task List:\n");
+    tasks.forEach(task -> sb.append(task).append("\n"));
+    return sb.toString();
+  }
+}***File: task/Tag.java***
+package task;
+
+import java.io.Serializable;
+import java.util.Objects;
+
+/**
+ * Represents a tag that can be associated with tasks.
+ * Each tag includes a name, a color, and an optional icon.
+ */
+public class Tag implements Serializable {
+
+  private static final long serialVersionUID = 1L;
+
+  private String name;
+  private String color;
+  private String icon;
+
+  /**
+   * Constructs a Tag with a specified name, color, and icon.
+   *
+   * @param name  The name of the tag, cannot be null or empty.
+   * @param color The color code of the tag, must be a valid hex color string.
+   * @param icon  The icon representation of the tag, optional.
+   * @throws IllegalArgumentException if name is empty or null, or if color is not in hex format.
+   */
+  public Tag(String name, String color, String icon) {
+    setName(name);
+    setColor(color);
+    this.icon = icon;
+  }
+
+  /**
+   * Sets the name of the tag.
+   *
+   * @param name The new name for the tag.
+   * @throws IllegalArgumentException if name is empty or null.
+   */
+  public void setName(String name) {
+    if (name == null || name.isEmpty()) {
+      throw new IllegalArgumentException("Tag name cannot be null or empty.");
+    }
+    this.name = name;
+  }
+
+  /**
+   * Sets the color of the tag.
+   *
+   * @param color The color code of the tag, must be a valid hex color string (e.g., "#FFFFFF").
+   * @throws IllegalArgumentException if color is not a valid hex color code.
+   */
+  public void setColor(String color) {
+    if (color == null || !color.matches("^#([A-Fa-f0-9]{6})$")) {
+      throw new IllegalArgumentException("Color must be a valid hex color code (e.g., #FFFFFF).");
+    }
+    this.color = color;
+  }
+
+  /**
+   * Sets the icon for the tag.
+   *
+   * @param icon The icon representation of the tag.
+   */
+  public void setIcon(String icon) {
+    this.icon = icon;
+  }
+
+  // Getters for each field
+
+  public String getName() {
+    return name;
+  }
+
+  public String getColor() {
+    return color;
+  }
+
+  public String getIcon() {
+    return icon;
+  }
+
+  // Override equals, hashCode, and toString methods
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Tag tag = (Tag) o;
+    return Objects.equals(name, tag.name)
+            && Objects.equals(color, tag.color)
+            && Objects.equals(icon, tag.icon);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, color, icon);
+  }
+
+  @Override
+  public String toString() {
+    return "Tag{"
+            + "name='" + name + '\''
+            + ", color='" + color + '\''
+            + ", icon='" + icon + '\''
+            + '}';
+  }
+}***File: task/Task.java***
+package task;
+
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Represents a task with a unique ID, title, optional description and tag, and expected end time.
+ * A task can have subtasks, be marked as complete, and track its activity through a heat index.
+ */
+public class Task implements Serializable {
+
+  @Serial
+  private static final long serialVersionUID = 1L;
+
+  private static final AtomicInteger idGenerator = new AtomicInteger(0);
+
+  private final int id;
+  private final String title;
+  private String description; // Optional
+  private boolean isCompleted;
+  private final List<Subtask> subtasks;
+  private Tag tag; // Optional
+  private final Date startTime;
+  private Date expectedEndTime;
+  private Date actualEndTime;
+  private int heatIndex;
+
+  /**
+   * Constructs a new Task instance with required title and expected end time.
+   * Automatically sets the start time to the current date and generates a unique ID.
+   *
+   * @param title           The title of the task, cannot be null or empty.
+   * @param expectedEndTime The expected end time of the task, cannot be null.
+   * @throws IllegalArgumentException if title is empty or null, or if expectedEndTime is null.
+   */
+  public Task(String title, Date expectedEndTime) {
+    if (title == null || title.isEmpty()) {
+      throw new IllegalArgumentException("Task title cannot be null or empty.");
+    }
+    if (expectedEndTime == null) {
+      throw new IllegalArgumentException("Expected end time cannot be null.");
+    }
+    this.id = idGenerator.incrementAndGet(); // Generates a unique ID
+    this.title = title;
+    this.isCompleted = false;
+    this.subtasks = new ArrayList<>();
+    this.startTime = new Date(); // Sets start time to current time
+    this.expectedEndTime = expectedEndTime;
+    this.heatIndex = 0;
+  }
+
+  // Optional setters for description and tag
+
+  public void setDescription(String description) {
+    this.description = description;
+  }
+
+  public void setTag(Tag tag) {
+    this.tag = tag;
+  }
+
+  public void setDueDate(Date dueDate) {
+    this.expectedEndTime = dueDate;
+  }
+
+  /**
+   * Updates the heat index based on the frequency of modifications.
+   */
+  public void increaseHeat() {
+    // Logic to calculate and update the heat index (e.g., based on view and update frequency)
+    heatIndex++;
+  }
+
+  /**
+   * Adds a subtask to the current task.
+   *
+   * @param subtask The subtask to add.
+   */
+  public void addSubtask(Subtask subtask) {
+    subtasks.add(subtask);
+  }
+
+  /**
+   * Marks the task as completed if all subtasks are completed and sets the actual end time.
+   */
+  public void setCompleted(boolean completed) {
+    this.isCompleted = completed;
+    if (completed) {
+      this.actualEndTime = new Date(); // Sets actual end time to the current time
+    }
+  }
+
+  // Getters for each field
+
+  public int getId() {
+    return id;
+  }
+
+  public String getTitle() {
+    return title;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public Tag getTag() {
+    return tag;
+  }
+
+  public Date getStartTime() {
+    return startTime;
+  }
+
+  public Date getExpectedEndTime() {
+    return expectedEndTime;
+  }
+
+  public Date getActualEndTime() {
+    return actualEndTime;
+  }
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public List<Subtask> getSubtasks() {
+    return new ArrayList<>(subtasks);
+  }
+
+  public int getHeatIndex() {
+    return heatIndex;
+  }
+
+  /**
+   * Clear all subtasks of this task.
+   */
+  public void clearSubtasks() {
+    subtasks.clear();
+  }
+
+  // Override equals, hashCode, and toString methods if necessary
+
+  @Override
+  public boolean equals(Object o) {
+    /*
+    XXX: This code need to be improved, with the id generation logic.
+    Currently, id will be refreshed after each run, so we cannot judge equal only by id.
+     */
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Task task = (Task) o;
+
+    return id == task.id
+            && title.equals(task.getTitle())
+            && description.equals(task.getDescription())
+            && startTime.equals(task.getStartTime());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id);
+  }
+
+  @Override
+  public String toString() {
+    return "Task{"
+            + "id=" + id
+            + ", title='" + title + '\''
+            + ", description='" + description + '\''
+            + ", isCompleted=" + isCompleted
+            + ", startTime=" + startTime
+            + ", expectedEndTime=" + expectedEndTime
+            + ", actualEndTime=" + actualEndTime
+            + ", heatIndex=" + heatIndex
+            + '}';
+  }
+}
